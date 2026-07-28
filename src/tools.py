@@ -351,12 +351,11 @@ def search_web(query: str) -> str:
             )
 
         try:
-            from duckduckgo_search import DDGS
+            from ddgs import DDGS
         except ImportError:
-            return "LỖI: Thư viện duckduckgo-search chưa được cài. Chạy: pip install duckduckgo-search"
+            return "LỖI: Thư viện ddgs chưa được cài. Chạy: pip install ddgs"
 
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=5))
+        results = list(DDGS().text(query, max_results=5))
 
         if not results:
             return f"LỖI: Không tìm thấy kết quả nào trên Internet cho truy vấn '{query}'."

@@ -3,4 +3,4 @@ openai
 anthropic
 python-dotenv
 requests
-duckduckgo-search
+ddgs
