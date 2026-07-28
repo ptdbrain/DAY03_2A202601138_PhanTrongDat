@@ -77,7 +77,9 @@ def build_chat_response(query: str) -> dict:
             "in_scope": False,
         }
 
-    provider = get_llm_provider("mock")
+    # Use the provider selected in .env. The factory safely falls back to the
+    # deterministic mock when the selected provider has no configured key.
+    provider = get_llm_provider()
     result = run_react_agent(query.strip(), provider, verbose=False)
     return {
         "answer": result["answer"],
