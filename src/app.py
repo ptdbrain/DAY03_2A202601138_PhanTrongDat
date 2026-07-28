@@ -19,7 +19,7 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 # Import các thành phần từ file của Role 2, Role 3 & Multi-Provider Adapter
-from tools import AVAILABLE_TOOLS, search_online_courses, get_course_reviews
+from tools import call_tool
 from prompts import CHATBOT_BASELINE_PROMPT, REACT_SYSTEM_PROMPT, MAX_ITERATIONS
 from providers import get_llm_provider
 
@@ -38,76 +38,92 @@ def load_test_cases():
         return json.load(f)
 
 
-def run_baseline_chatbot(user_query: str, provider):
+def run_baseline_chatbot(user_query: str, provider, verbose: bool = True):
     """
     Dựng Chatbot gốc (Baseline) không có công cụ.
     """
-    print(f"\n💬 [CHATBOT BASELINE] Câu hỏi: {user_query}")
-    print(f"⚙️ System Prompt: {CHATBOT_BASELINE_PROMPT.strip()}")
+    if verbose:
+        print(f"\n💬 [CHATBOT BASELINE] Câu hỏi: {user_query}")
+        print(f"⚙️ System Prompt: {CHATBOT_BASELINE_PROMPT.strip()}")
     
     # Gọi LLM Provider thực hiện sinh câu trả lời
     response = provider.generate(user_query, system_prompt=CHATBOT_BASELINE_PROMPT)
-    print(f"🤖 Chatbot trả lời:\n{response}")
+    if verbose:
+        print(f"🤖 Chatbot trả lời:\n{response}")
+    return {
+        "answer": response,
+        "tool_calls": [],
+        "termination": "final",
+        "trace": [{"type": "final", "content": response}],
+    }
 
 
-def run_react_agent(user_query: str, provider):
+def run_react_agent(user_query: str, provider, max_iterations: int = None, verbose: bool = True):
     """
     Dựng vòng lặp ReAct Agent (Thought -> Action -> Observation) có Guardrails.
     Gọi LLM thật, parse Action, thực thi Tool, append Observation vào prompt.
     """
     import re
 
-    print(f"\n🤖 [REACT AGENT] Câu hỏi: {user_query}")
-    step = 0
-    
-    # Khởi tạo conversation history với câu hỏi của user
+    limit = MAX_ITERATIONS if max_iterations is None else max_iterations
+    trace = []
+    tool_calls = []
     conversation = f"Question: {user_query}\n"
-    
-    while step < MAX_ITERATIONS:
-        step += 1
-        print(f"\n--- 🔄 Vòng lặp ReAct (Step {step}/{MAX_ITERATIONS}) ---")
-        
-        # Gọi LLM với system prompt + conversation history hiện tại
+    final_answer = None
+    termination = "max_iterations"
+
+    if verbose:
+        print(f"\n🤖 [REACT AGENT] Câu hỏi: {user_query}")
+
+    for step in range(1, limit + 1):
+        if verbose:
+            print(f"\n--- 🔄 Vòng lặp ReAct (Step {step}/{limit}) ---")
         llm_output = provider.generate(conversation, system_prompt=REACT_SYSTEM_PROMPT)
-        print(f"📤 LLM Output:\n{llm_output}")
-        
-        # --- Kiểm tra Final Answer ---
-        final_match = re.search(r"Final Answer:\s*(.+)", llm_output, re.DOTALL)
+        trace.append({"type": "llm", "step": step, "content": llm_output})
+        if verbose:
+            print(f"📤 LLM Output:\n{llm_output}")
+
+        final_match = re.search(r"Final Answer:\s*(.+)", llm_output, re.DOTALL | re.IGNORECASE)
         if final_match:
             final_answer = final_match.group(1).strip()
-            print(f"\n🏁 Final Answer: {final_answer}")
+            termination = "refusal" if final_answer.upper().startswith("TỪ CHỐI") else "final"
+            trace.append({"type": "final", "step": step, "content": final_answer})
+            if verbose:
+                print(f"\n🏁 Final Answer: {final_answer}")
             break
-        
-        # --- Parse Action: tên_tool[tham_số] ---
-        action_match = re.search(r"Action:\s*(\w+)\[(.+?)\]", llm_output)
+
+        action_match = re.search(r"Action:\s*([A-Za-z_][\w]*)\s*\[(.*?)\]", llm_output, re.DOTALL)
         if action_match:
             tool_name = action_match.group(1).strip()
-            tool_arg = action_match.group(2).strip().strip("'\"")
-            
-            print(f"🛠️ Action: {tool_name}[{tool_arg}]")
-            
-            # Thực thi tool nếu tồn tại trong AVAILABLE_TOOLS
-            if tool_name in AVAILABLE_TOOLS:
-                try:
-                    observation = AVAILABLE_TOOLS[tool_name](tool_arg)
-                except Exception as e:
-                    observation = f"LỖI: Tool '{tool_name}' gặp lỗi khi thực thi: {str(e)}"
-            else:
-                available_names = ", ".join(AVAILABLE_TOOLS.keys())
-                observation = f"LỖI: Tool '{tool_name}' không tồn tại. Các tool hợp lệ: [{available_names}]"
-            
-            print(f"👁️ Observation: {observation}")
-            
-            # Append kết quả vào conversation history cho bước tiếp theo
+            tool_arg = action_match.group(2).strip().strip("'\"").strip()
+            tool_calls.append(tool_name)
+            trace.append({"type": "action", "step": step, "tool": tool_name, "input": tool_arg})
+            if verbose:
+                print(f"🛠️ Action: {tool_name}[{tool_arg}]")
+            observation = call_tool(tool_name, tool_arg)
+            trace.append({"type": "observation", "step": step, "content": observation})
+            if verbose:
+                print(f"👁️ Observation: {observation}")
             conversation += f"\n{llm_output}\nObservation: {observation}\n"
         else:
-            # Không parse được Action cũng không có Final Answer
-            print("⚠️ Không parse được Action hoặc Final Answer từ LLM output.")
-            conversation += f"\n{llm_output}\nObservation: LỖI: Định dạng không hợp lệ. Hãy dùng đúng format: Action: tên_tool[tham_số] hoặc Final Answer: câu trả lời.\n"
-    
-    if step >= MAX_ITERATIONS:
-        print(f"\n🛡️ GUARDRAIL TRIGGERED: Đã đạt giới hạn tối đa {MAX_ITERATIONS} bước. Ngắt lặp an toàn!")
-        print("💬 Xin lỗi, tôi chưa thể hoàn tất câu trả lời trong giới hạn cho phép. Vui lòng thử lại với câu hỏi cụ thể hơn.")
+            observation = "LỖI: Định dạng không hợp lệ. Hãy dùng Action: tên_tool[tham_số] hoặc Final Answer: câu trả lời."
+            trace.append({"type": "observation", "step": step, "content": observation})
+            if verbose:
+                print(f"⚠️ {observation}")
+            conversation += f"\n{llm_output}\nObservation: {observation}\n"
+
+    if final_answer is None:
+        final_answer = f"Xin lỗi, tôi chưa thể hoàn tất câu trả lời trong giới hạn {limit} bước cho phép."
+        trace.append({"type": "guardrail", "content": final_answer})
+        if verbose:
+            print(f"\n🛡️ GUARDRAIL TRIGGERED: {final_answer}")
+
+    return {
+        "answer": final_answer,
+        "tool_calls": tool_calls,
+        "termination": termination,
+        "trace": trace,
+    }
 
 
 if __name__ == "__main__":
@@ -116,7 +132,10 @@ if __name__ == "__main__":
     print("=" * 60)
     
     # Khởi tạo Multi-Provider LLM Adapter (Đọc từ biến môi trường LLM_PROVIDER)
-    provider = get_llm_provider()
+    # Demo/chấm điểm phải chạy offline deterministic. Muốn dùng API thật,
+    # đặt DAY03_LIVE_LLM=1 cùng LLM_PROVIDER và credential tương ứng.
+    provider_name = os.getenv("LLM_PROVIDER") if os.getenv("DAY03_LIVE_LLM") == "1" else "mock"
+    provider = get_llm_provider(provider_name)
     model_name = getattr(provider, "model_name", "Offline Mock Mode")
     print(f"🔌 LLM Provider đang hoạt động: {provider.__class__.__name__} (Model: {model_name})")
     

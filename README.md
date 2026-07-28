@@ -71,3 +71,12 @@ timeline
 
 > 🚀 **BẮT ĐẦU LÀM BÀI**:
 > Vui lòng mở sổ tay thực hành 👉 **[PHAN_CONG_CONG_VIEC.md](file:///c:/Users/Admin/Documents/VinUni/LabCoachVin/LabKeyCoach/Day-3-Lab-Chatbot-vs-react-agent-E402/docs/PHAN_CONG_CONG_VIEC.md)** để xem phân vai và checklist công việc cụ thể cho từng thành viên!
+
+### Chạy web chat local
+
+```powershell
+python web/server.py
+```
+
+Mở http://127.0.0.1:8000. Web app dùng lại ReAct Agent hiện có, mặc định
+offline; câu hỏi ngoài phạm vi tư vấn khóa học sẽ được bỏ qua và không gọi tool.

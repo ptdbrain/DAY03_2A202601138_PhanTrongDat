@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10241f" />
+    <title>DAY03 Chat · Trợ lý khóa học</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="side-panel" aria-label="Thông tin trợ lý">
+        <div class="brand-mark" aria-hidden="true">D3</div>
+        <p class="eyebrow">DAY 03 · REACT AGENT</p>
+        <h1>Học đúng hướng, bắt đầu từ câu hỏi đúng.</h1>
+        <p class="intro">Trợ lý tư vấn khóa học, lộ trình và review có dữ liệu. Câu hỏi ngoài phạm vi sẽ được bỏ qua.</p>
+
+        <div class="scope-note">
+          <span class="status-dot" aria-hidden="true"></span>
+          <div>
+            <strong>Đang chạy offline</strong>
+            <span>MockProvider deterministic</span>
+          </div>
+        </div>
+
+        <div class="supported">
+          <p class="eyebrow">HỖ TRỢ</p>
+          <ul>
+            <li>Python &amp; Data Analysis</li>
+            <li>Machine Learning</li>
+            <li>Khóa học &amp; review</li>
+            <li>Online / offline learning</li>
+          </ul>
+        </div>
+      </aside>
+
+      <section class="chat-panel" aria-label="Khu vực trò chuyện">
+        <header class="chat-header">
+          <div>
+            <p class="eyebrow">CONVERSATION</p>
+            <h2>Trợ lý học tập</h2>
+          </div>
+          <button id="clear-button" class="quiet-button" type="button">Xóa chat</button>
+        </header>
+
+        <div id="messages" class="messages" aria-live="polite" aria-label="Tin nhắn">
+          <article class="message assistant-message">
+            <div class="message-label">D3 / ASSISTANT</div>
+            <p>Chào bạn. Mình có thể giúp tìm khóa học, xem review, hoặc gợi ý lộ trình Python, Data Analysis và Machine Learning.</p>
+          </article>
+        </div>
+
+        <div class="composer-wrap">
+          <div class="examples" aria-label="Câu hỏi gợi ý">
+            <button type="button" class="example-chip">Tìm khóa học Data Analysis</button>
+            <button type="button" class="example-chip">Review Machine Learning for Everybody</button>
+            <button type="button" class="example-chip">Học online có ưu nhược điểm gì?</button>
+          </div>
+          <form id="chat-form" class="composer">
+            <label class="sr-only" for="query-input">Nhập câu hỏi</label>
+            <textarea id="query-input" rows="1" maxlength="1000" placeholder="Bạn muốn học gì hôm nay?" autocomplete="off"></textarea>
+            <button id="send-button" class="send-button" type="submit" aria-label="Gửi câu hỏi">
+              <span>Gửi</span>
+              <span aria-hidden="true">↗</span>
+            </button>
+          </form>
+          <p id="status" class="composer-status">Enter để gửi · Shift + Enter để xuống dòng</p>
+        </div>
+      </section>
+    </main>
+    <script src="/app.js" defer></script>
+  </body>
+</html>

@@ -135,14 +135,82 @@ class MockProvider(BaseLLMProvider):
     """Offline Mock Provider (Cho bài test không cần kết nối API)"""
     def generate(self, prompt: str, system_prompt: str = "") -> str:
         text = prompt.lower()
-        if "thời tiết" in text and "hà nội" in text:
-            return "Thought: Cần tra cứu thời tiết Hà Nội.\nAction: get_weather['Hà Nội']"
-        return "🤖 [Mock Provider]: Phản hồi giả lập offline cho bài test."
+
+        if "chatbot baseline" in system_prompt.lower() or "không có khả năng truy cập" in system_prompt.lower():
+            if any(word in text for word in ("khóa học", "review", "đánh giá", "data analysis", "machine learning")):
+                return (
+                    "Final Answer: Tôi là chatbot tư vấn chung, không có khả năng truy cập Internet thời gian thực "
+                    "để tra cứu danh sách khóa học hay review mới nhất. Bạn có thể sử dụng phiên bản ReAct Agent."
+                )
+
+        if any(word in text for word in ("bom", "vũ khí", "vu khi", "chất nổ", "thuốc nổ")):
+            return (
+                "Thought: Yêu cầu liên quan đến nội dung nguy hiểm.\n"
+                "Final Answer: TỪ CHỐI: Tôi không thể hỗ trợ nội dung chế tạo vũ khí hoặc chất nổ."
+            )
+
+        if "observation:" in text and "4.7/5" in text:
+            return (
+                "Thought: Đã có danh sách và đánh giá từ Observation.\n"
+                "Final Answer: Machine Learning for Everybody có điểm 4.7/5 với 12,500 lượt đánh giá. "
+                "Ưu điểm là dễ hiểu và miễn phí; nhược điểm là phần toán nhanh và ít bài tập có chấm điểm."
+            )
+
+        if "observation:" in text and "data analysis" in text:
+            return (
+                "Thought: Đã nhận được danh sách khóa học từ Observation.\n"
+                "Final Answer: Đã tìm thấy 3 khóa học Data Analysis gồm Google Data Analytics Professional Certificate, "
+                "Data Analysis with Python và The Complete Data Analyst Bootcamp."
+            )
+
+        if "machine learning" in text and "observation:" not in text:
+            return (
+                "Thought: Cần tìm danh sách khóa học Machine Learning trước.\n"
+                "Action: search_online_courses[Machine Learning]"
+            )
+
+        if "review" in text or "đánh giá" in text:
+            return (
+                "Thought: Cần tra cứu review khóa học cụ thể.\n"
+                "Action: get_course_reviews[Machine Learning for Everybody]"
+            )
+
+        if "data analysis" in text or "data analytics" in text:
+            return (
+                "Thought: Cần tra cứu danh sách khóa học Data Analysis.\n"
+                "Action: search_online_courses[Data Analysis]"
+            )
+
+        if "python" in text:
+            return (
+                "Final Answer: Khi bắt đầu Python, hãy tập trung vào cú pháp và kiểu dữ liệu, "
+                "điều khiển luồng, hàm, cấu trúc dữ liệu, xử lý lỗi, module và luyện tập bằng dự án nhỏ."
+            )
+
+        if "online" in text and "offline" in text:
+            return (
+                "Final Answer: Học online linh hoạt, tiết kiệm thời gian và có nhiều tài liệu; "
+                "đổi lại cần tự giác và ít tương tác trực tiếp hơn học offline. "
+                "Học offline có lịch cố định, phản hồi nhanh và môi trường kỷ luật hơn nhưng kém linh hoạt."
+            )
+
+        return "Final Answer: Tôi có thể tư vấn lộ trình học tập dựa trên kiến thức chung."
 
 
 def get_llm_provider(provider_name: str = None) -> BaseLLMProvider:
     """Factory function tự chọn Provider từ biến môi trường LLM_PROVIDER"""
     name = (provider_name or os.getenv("LLM_PROVIDER") or "mock").lower().strip()
+
+    # Chạy lab phải deterministic và không phụ thuộc mạng nếu người dùng chưa
+    # cấu hình credential hợp lệ, kể cả khi máy có LLM_PROVIDER toàn cục.
+    key_by_provider = {
+        "openai": os.getenv("OPENAI_API_KEY"),
+        "gemini": os.getenv("GEMINI_API_KEY"),
+        "anthropic": os.getenv("ANTHROPIC_API_KEY"),
+        "openrouter": os.getenv("OPENROUTER_API_KEY"),
+    }
+    if name in key_by_provider and not key_by_provider[name]:
+        return MockProvider()
     
     if name == "gemini":
         return GeminiProvider()
