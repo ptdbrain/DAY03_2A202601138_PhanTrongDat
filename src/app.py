@@ -58,6 +58,38 @@ def run_baseline_chatbot(user_query: str, provider, verbose: bool = True):
     }
 
 
+def _grounded_fallback(trace: list, limit: int) -> tuple[str, str]:
+    """Return a safe answer from tool evidence if the LLM never finalizes."""
+    observations = []
+    seen = set()
+    for item in trace:
+        if item.get("type") != "observation":
+            continue
+        content = str(item.get("content", "")).strip()
+        if not content or content in seen:
+            continue
+        seen.add(content)
+        observations.append(content)
+
+    refusals = [item for item in observations if item.upper().startswith("TỪ CHỐI:")]
+    if refusals:
+        return refusals[0], "refusal"
+
+    useful = [item for item in observations if not item.upper().startswith("LỖI")]
+    if useful:
+        return (
+            f"Đã chạm giới hạn {limit} bước, nhưng tôi đã tra cứu được "
+            "các thông tin sau từ công cụ:\n\n"
+            + "\n\n".join(useful),
+            "fallback" if len(useful) > 1 else "max_iterations",
+        )
+
+    return (
+        f"Xin lỗi, tôi chưa thể hoàn tất câu trả lời trong giới hạn {limit} bước cho phép.",
+        "max_iterations",
+    )
+
+
 def run_react_agent(user_query: str, provider, max_iterations: int = None, verbose: bool = True):
     """
     Dựng vòng lặp ReAct Agent (Thought -> Action -> Observation) có Guardrails.
@@ -113,7 +145,7 @@ def run_react_agent(user_query: str, provider, max_iterations: int = None, verbo
             conversation += f"\n{llm_output}\nObservation: {observation}\n"
 
     if final_answer is None:
-        final_answer = f"Xin lỗi, tôi chưa thể hoàn tất câu trả lời trong giới hạn {limit} bước cho phép."
+        final_answer, termination = _grounded_fallback(trace, limit)
         trace.append({"type": "guardrail", "content": final_answer})
         if verbose:
             print(f"\n🛡️ GUARDRAIL TRIGGERED: {final_answer}")
