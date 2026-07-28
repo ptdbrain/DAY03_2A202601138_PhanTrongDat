@@ -1,0 +1,49 @@
+%%{init: {'theme': 'neutral'}}%%
+flowchart TD
+    Start([Sinh viên đặt câu hỏi]) --> Router{"Router: Câu hỏi có cần dữ<br/>liệu thực tế (khóa học / review)<br/>hay chỉ hỏi lý thuyết chung?"}
+
+    %% ------------------- CHATBOT PATH (đơn giản) -------------------
+    Router -->|"Đơn giản: tư vấn lộ trình,<br/>so sánh hình thức học..."| ChatbotPath
+
+    subgraph ChatbotPath ["💬 CHATBOT PATH (Baseline - Cấp 2, không Tool)"]
+        direction TB
+        C1["Nạp CHATBOT_BASELINE_PROMPT"] --> C2["LLM sinh câu trả lời từ<br/>kiến thức tĩnh (không tool)"]
+        C2 --> C3{"Câu hỏi có đòi<br/>danh sách khóa học /<br/>điểm review thực tế?"}
+        C3 -->|Không| C4["Trả lời trực tiếp cho sinh viên"]
+        C3 -->|Có nhưng Chatbot<br/>không có quyền tra cứu| C5["Thành thật từ chối:<br/>'Không có khả năng truy cập<br/>Internet thời gian thực,<br/>hãy dùng ReAct Agent'"]
+    end
+
+    C4 --> End([Kết thúc])
+    C5 --> End
+
+    %% ------------------- REACT AGENT PATH (phức tạp) -------------------
+    Router -->|"Phức tạp: cần tra cứu danh sách<br/>khóa học hoặc điểm đánh giá thật"| ReactPath
+
+    subgraph ReactPath ["🤖 REACT AGENT PATH (Cấp 3 - Thought → Action → Observation)"]
+        direction TB
+        R1["Nạp REACT_SYSTEM_PROMPT<br/>+ lịch sử hội thoại"] --> R2["Thought: LLM suy luận<br/>bước tiếp theo cần làm gì"]
+        R2 --> R3{"LLM sinh ra gì?"}
+
+        R3 -->|"Final Answer"| RFinal["🏁 Trả lời hoàn chỉnh<br/>cho sinh viên"]
+
+        R3 -->|"Action: search_online_courses[topic]<br/>hoặc get_course_reviews[course_name]"| R4{"Guardrail:<br/>tham số có chứa<br/>từ khóa vi phạm<br/>(BLOCKED_KEYWORDS)?"}
+
+        R4 -->|"Có"| RDeny["Observation: 'TỪ CHỐI: ...'<br/>🛡️ Agent dừng gọi tool,<br/>từ chối lịch sự"] --> RFinal
+
+        R4 -->|"Không"| R5["Thực thi Tool tương ứng<br/>trên COURSE_DB / REVIEW_DB"]
+        R5 --> R6{"Tool trả về<br/>kết quả gì?"}
+
+        R6 -->|"Dữ liệu hợp lệ"| R7["Observation: danh sách khóa học<br/>hoặc điểm đánh giá thật"]
+        R6 -->|"Không tìm thấy<br/>(chủ đề/khóa học lạ)"| R8["Observation: 'LỖI: ...'<br/>+ gợi ý chủ đề khả dụng"]
+
+        R7 --> R9["Append Observation vào<br/>conversation history"]
+        R8 --> R9
+
+        R9 --> R10{"step < MAX_ITERATIONS (4)?"}
+        R10 -->|"Có, còn lượt"| R2
+        R10 -->|"Hết lượt"| RGuard["🛡️ GUARDRAIL TRIGGERED:<br/>Ngắt vòng lặp an toàn,<br/>xin lỗi + không lặp vô hạn"] --> RFinal
+
+        R3 -->|"Output sai định dạng<br/>(không parse được)"| RErr["Observation: 'LỖI: Định dạng<br/>không hợp lệ'"] --> R9
+    end
+
+    RFinal --> End
