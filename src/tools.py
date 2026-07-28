@@ -314,6 +314,66 @@ def get_course_reviews(course_name: str) -> str:
         return f"LỖI HỆ THỐNG khi tra cứu đánh giá: {type(e).__name__} - {e}"
 
 
+def search_web(query: str) -> str:
+    """
+    Tìm kiếm thông tin thực tế trên Internet bằng DuckDuckGo (không cần API key).
+    Dùng khi người dùng hỏi về khóa học, nền tảng học tập, hoặc thông tin cần
+    cập nhật mà cơ sở dữ liệu nội bộ không có.
+
+    Khi nào Agent nên gọi tool này:
+        - Người dùng hỏi về khóa học không có trong COURSE_DB.
+        - Cần tìm thông tin giá, thời hạn ưu đãi, hoặc nội dung mới nhất của một khóa học.
+        - Câu hỏi cần dữ liệu thực tế từ Internet.
+
+    Args:
+        query (str): Câu truy vấn tìm kiếm bằng tiếng Anh hoặc tiếng Việt.
+            Ví dụ: 'best python course for beginners 2024',
+                   'khóa học data science miễn phí tốt nhất'.
+
+    Returns:
+        str: Tóm tắt kết quả tìm kiếm (tối đa 5 kết quả hàng đầu).
+            Nếu có lỗi kết nối hoặc vi phạm an toàn, trả về chuỗi bắt đầu bằng
+            "LỖI:" hoặc "TỪ CHỐI:". Hàm KHÔNG BAO GIỜ raise Exception.
+
+    Ví dụ:
+        >>> search_web("best free machine learning course 2024")
+        'Kết quả tìm kiếm cho "best free machine learning course 2024": ...'
+    """
+    try:
+        query, error = _clean_arg(query, "query")
+        if error:
+            return error
+
+        if _is_blocked(query):
+            return (
+                f"TỪ CHỐI: Truy vấn tìm kiếm '{query}' vi phạm tiêu chuẩn cộng đồng. "
+                f"Không thể thực hiện tìm kiếm này."
+            )
+
+        try:
+            from duckduckgo_search import DDGS
+        except ImportError:
+            return "LỖI: Thư viện duckduckgo-search chưa được cài. Chạy: pip install duckduckgo-search"
+
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=5))
+
+        if not results:
+            return f"LỖI: Không tìm thấy kết quả nào trên Internet cho truy vấn '{query}'."
+
+        lines = [f'Kết quả tìm kiếm trên Internet cho "{query}":']
+        for i, r in enumerate(results, 1):
+            title = r.get("title", "Không có tiêu đề")
+            body = r.get("body", "Không có mô tả")[:200]  # Giới hạn 200 ký tự/kết quả
+            href = r.get("href", "")
+            lines.append(f"{i}. {title}: {body}... [{href}]")
+
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"LỖI HỆ THỐNG khi tìm kiếm web: {type(e).__name__} - {e}"
+
+
 # ---------------------------------------------------------------------------
 # 📖 TOOL SPECS - Mô tả chuẩn để Role 3 nhúng vào REACT_SYSTEM_PROMPT
 # ---------------------------------------------------------------------------
@@ -340,12 +400,25 @@ TOOL_SPECS = [
         },
         "usage": "get_course_reviews[Machine Learning for Everybody]",
     },
+    {
+        "name": "search_web",
+        "description": (
+            "Tìm kiếm thông tin THỰC TẾ trên Internet bằng DuckDuckGo. "
+            "Dùng khi cần tìm khóa học, thông tin nền tảng học tập, hoặc bất kỳ câu hỏi nào "
+            "cần dữ liệu mới nhất không có trong cơ sở dữ liệu nội bộ."
+        ),
+        "parameters": {
+            "query": "str - Câu truy vấn tìm kiếm, ví dụ: 'best python course for beginners 2024'."
+        },
+        "usage": "search_web[best free machine learning course 2024]",
+    },
 ]
 
 # Danh sách các tool được đăng ký để Agent sử dụng
 AVAILABLE_TOOLS = {
     "search_online_courses": search_online_courses,
     "get_course_reviews": get_course_reviews,
+    "search_web": search_web,
 }
 
 

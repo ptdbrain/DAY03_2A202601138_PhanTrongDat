@@ -140,13 +140,22 @@ if __name__ == "__main__":
         run_baseline_chatbot(test["question"], provider)
         
         print(f"\n🔢 Tool calls: 0 (Baseline không gọi tool)")
-    
+
     # ================================================================
-    # 📍 DEMO: CHẠY REACT AGENT (Câu mẫu - sẽ hoàn thiện ở Mốc 3)
+    # 📍 MỐC 3: CHẠY REACT AGENT TRÊN CẢ 5 TEST CASES (+ GUARDRAIL)
     # ================================================================
     print(f"\n\n{'=' * 60}")
-    print("📍 DEMO: CHẠY REACT AGENT (Câu mẫu)")
+    print("📍 MỐC 3: CHẠY REACT AGENT (Thought -> Action -> Observation)")
     print("=" * 60)
     
-    sample_query = tests[2]["question"]
-    run_react_agent(sample_query, provider)
+    for test in tests:
+        print(f"\n{'═' * 60}")
+        print(f"📝 Test Case #{test['id']} | {test['category']}")
+        print(f"❓ Câu hỏi: {test['question']}")
+        print(f"🎯 Kỳ vọng: {test['expected_behavior']}")
+        print(f"{'═' * 60}")
+        
+        run_react_agent(test["question"], provider)
+        
+        print(f"\n{'─' * 60}")
+
