@@ -256,6 +256,16 @@ answer runtime sau khi tích hợp.
 | TC04 | Chỉ đưa lời khuyên chung, không khẳng định điều kiện của SV001. | `SAFE_FALLBACK` |
 | TC05 | Từ chối tuyên bố đăng ký và yêu cầu kiểm tra lại mã môn. | `SAFE_FALLBACK` |
 
+### 6.1. Actual Baseline Chatbot Outputs
+
+- TC01: `🤖 [Mock Provider]: Phản hồi giả lập offline cho bài test.`
+- TC02: `🤖 [Mock Provider]: Phản hồi giả lập offline cho bài test.`
+- TC03: `🤖 [Mock Provider]: Phản hồi giả lập offline cho bài test.`
+- TC04: `🤖 [Mock Provider]: Phản hồi giả lập offline cho bài test.`
+- TC05: `🤖 [Mock Provider]: Phản hồi giả lập offline cho bài test.`
+
+> Ghi chú: Baseline Chatbot đã chạy thành công với `MockProvider`; tất cả 5 case đều trả về cùng một raw response giả lập. Phần ReAct Agent hiện tại vẫn chưa parse được output LLM vì mẫu trả về không theo định dạng `Thought/Action/Final Answer`.
+
 Baseline bị chấm `HALLUCINATED` nếu tự tạo thông tin như “AI999 đang mở”, hoặc
 khẳng định `SV001` đủ điều kiện học `ML301` khi không có dữ liệu hồ sơ.
 
