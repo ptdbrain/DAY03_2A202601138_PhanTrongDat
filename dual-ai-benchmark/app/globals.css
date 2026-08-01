@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: oklch(98.6% 0.006 230);
+  --panel: oklch(99.2% 0.004 230);
+  --muted: oklch(94.5% 0.008 230);
+  --line: oklch(87% 0.012 230);
+  --text: oklch(22% 0.018 240);
+  --subtle: oklch(47% 0.018 240);
+  --accent: oklch(55% 0.13 235);
+  --accent-soft: oklch(94% 0.035 235);
+  --economy: oklch(54% 0.12 170);
+  --premium: oklch(56% 0.13 300);
+  --danger: oklch(58% 0.18 28);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: oklch(18% 0.018 240);
+  --panel: oklch(22% 0.018 240);
+  --muted: oklch(27% 0.018 240);
+  --line: oklch(35% 0.018 240);
+  --text: oklch(93% 0.008 235);
+  --subtle: oklch(72% 0.012 235);
+  --accent: oklch(70% 0.11 235);
+  --accent-soft: oklch(30% 0.04 235);
+  --economy: oklch(72% 0.11 170);
+  --premium: oklch(75% 0.12 300);
+  --danger: oklch(72% 0.15 28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+button,
+textarea,
+input,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.markdown {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (min-width: 920px) {
+  .metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
